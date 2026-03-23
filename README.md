@@ -17,7 +17,7 @@ to build:
 `mvn clean package`
 to run binary:
 `java -jar target/mouse-mover-1.0.0.jar`
-or just download and run mouse-mover-1.0.0.jar
+or just download and run https://github.com/fi3ik-mme/mouse-mover/blob/main/target/mouse-mover-1.0.0.jar
 ## 🧠 Usage
 Start the app
 Leave it running in background
