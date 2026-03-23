@@ -1,33 +1,28 @@
 package mouse.mover;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.awt.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class HumanLikeMouseMover {
 
-    private static final Logger LOGGER = LogManager.getLogger(HumanLikeMouseMover.class);
-
-    private final Robot robot;
-    private final int checkIntervalMs;
-    private final int idleThresholdMs;
+    private static final int CHECK_INTERVAL_MS = 1000;
+    private static final int USER_IDLE_THRESHOLD_MS = 60_000;
 
     private Point lastMousePosition;
     private long lastUserMoveTime;
 
-    public HumanLikeMouseMover(Robot robot, int checkIntervalMs, int idleThresholdMs) {
-        this.robot = robot;
-        this.checkIntervalMs = checkIntervalMs;
-        this.idleThresholdMs = idleThresholdMs;
+    private final Robot robot;
 
+    public HumanLikeMouseMover() throws AWTException {
+        this.robot = new Robot();
         this.lastMousePosition = getMousePosition();
         this.lastUserMoveTime = System.currentTimeMillis();
     }
 
     public void start() throws InterruptedException {
-        while (!Thread.currentThread().isInterrupted()) {
+        while (true) {
             Point current = getMousePosition();
 
             if (isUserActive(current)) {
@@ -36,7 +31,7 @@ public class HumanLikeMouseMover {
                 performAutoMovement();
             }
 
-            Thread.sleep(checkIntervalMs);
+            Thread.sleep(CHECK_INTERVAL_MS);
         }
     }
 
@@ -47,17 +42,19 @@ public class HumanLikeMouseMover {
     private void handleUserMovement(Point current) {
         lastUserMoveTime = System.currentTimeMillis();
         lastMousePosition = current;
-        LOGGER.info("User moved mouse: {}", current);
+        log("INFO", "User moved mouse: " + current);
     }
 
     private boolean isUserIdle() {
         long idleTime = System.currentTimeMillis() - lastUserMoveTime;
-        return idleTime >= idleThresholdMs;
+        return idleTime >= USER_IDLE_THRESHOLD_MS;
     }
 
     private void performAutoMovement() throws InterruptedException {
         Point newPosition = moveMouseSmoothly();
-        lastMousePosition = newPosition;
+        if (newPosition != null) {
+            lastMousePosition = newPosition;
+        }
     }
 
     private Point moveMouseSmoothly() throws InterruptedException {
@@ -67,18 +64,13 @@ public class HumanLikeMouseMover {
         if (start == null) return null;
 
         ThreadLocalRandom random = ThreadLocalRandom.current();
-
-        Point target = new Point(
-                random.nextInt(screen.width),
-                random.nextInt(screen.height)
-        );
-
+        Point target = new Point(random.nextInt(screen.width), random.nextInt(screen.height));
         int steps = random.nextInt(20, 50);
 
         double dx = (target.x - start.x) / (double) steps;
         double dy = (target.y - start.y) / (double) steps;
 
-        LOGGER.info("Moving from {} to {} in {} steps", start, target, steps);
+        log("INFO", "Moving mouse from " + start + " to " + target + " in " + steps + " steps");
 
         for (int i = 1; i <= steps; i++) {
             int x = (int) (start.x + dx * i + random.nextGaussian() * 1.5);
@@ -89,11 +81,9 @@ public class HumanLikeMouseMover {
         }
 
         Thread.sleep(random.nextInt(1000, 4000));
-
-        Point finalPosition = getMousePosition();
-        LOGGER.info("Final position: {}", finalPosition);
-
-        return finalPosition;
+        Point finalPos = getMousePosition();
+        log("INFO", "Mouse movement finished at " + finalPos);
+        return finalPos;
     }
 
     private Point getMousePosition() {
@@ -101,15 +91,13 @@ public class HumanLikeMouseMover {
         return pointerInfo != null ? pointerInfo.getLocation() : null;
     }
 
+    private void log(String level, String message) {
+        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        System.out.println("[" + time + "] [" + level + "] " + message);
+    }
+
     public static void main(String[] args) throws Exception {
-        Robot robot = new Robot();
-
-        HumanLikeMouseMover mover = new HumanLikeMouseMover(
-                robot,
-                1000,      // check interval
-                60_000     // idle threshold
-        );
-
+        HumanLikeMouseMover mover = new HumanLikeMouseMover();
         mover.start();
     }
 }
